@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Code Paste</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/monokai-sublime.min.css">
+    <!-- <script src="http://p.zsh2517.com/src/highlight.pack.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</head>
+<style>
+    .hljs ol li {
+        display: list-item;
+        text-align: -webkit-match-parent;
+        font-size: larger;
+    }
+
+    code {
+        tab-size: 4;
+    }
+</style>
+
+<body style="background-color: #23241f;">
+    <!-- <div class="container-fluid"> -->
+    <nav class="navbar navbar-expand-md bg-dark navbar-dark fixed-top">
+        <a class="navbar-brand" href="/paste">Code Paste</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="collapsibleNavbar">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <button class="btn btn-primary" type="button" onclick="newpaste()">新建空白文件</button>&nbsp;
+                    <!-- <a class="nav-link" href="#">Paste</a> -->
+                </li>
+                <li class="nav-item">
+                    <button class="btn btn-warning" type="button" data-toggle="modal"
+                            data-target="#submitinfo">贴出当前代码</button>&nbsp;
+                    <!-- <a class="nav-link" href="#">Paste</a> -->
+                </li>
+                <li class="nav-item">
+                    <button class="btn btn-danger" type="button" onclick="location.reload();">重新打开当前文件</button>&nbsp;
+                    <!-- <a class="nav-link" href="#">Paste</a> -->
+                </li>
+                <li class="nav-item">
+                    <form class="form-inline">
+                        <input class="form-control" type="text" style="width:8em" placeholder="Language"
+                               id="inputlang" value={{ language }}>&nbsp;
+                        <button class="btn btn-success" type="button" id="btn-refresh"
+                                onclick="highlight_code()">切换语言</button>&nbsp;
+                    </form>
+                    <!-- <a class="nav-link" href="#">Paste</a> -->
+                </li>
+                <li class="nav-item">
+                    <!-- <a class="nav-link" href="#">View</a> -->
+                    <form class="form-inline">
+                        <input class="form-control" style="width: fit-content" type="text"
+                               placeholder="Paste the URL / ID" id="nav_inputurl">&nbsp;
+                        <button class="btn btn-info" type="button" onclick="nav_openurl()">打开</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <!-- </div> <br> -->
+    <div class="container-fluid" style="margin-top:80px">
+        <div class="card bg-dark text-white">
+            <div class="card-header">文件名：{{fname | escape}} &nbsp;&nbsp;&nbsp;
+                <button type="button" class="btn btn-light btn-sm" data-toggle="collapse"
+                        data-target="#clearinfo">详细信息</button>
+            </div>
+            <div class="collapse" id="clearinfo">
+            <div class="card-body">
+                    <div>发送者: {{author}}</div>
+                    <div>发布时间：{{bgntime}}</div>
+                    <div>过期时间：{{exptime}}</div>
+                    <div>描述：{{ desc | escape}}</div>
+                </div>
+            </div>
+        </div>
+        <pre><code spellcheck="false" id="codeArea" contenteditable="true" class="{{ language }}">{{code}}</code></pre>
+        <!-- 关于语言：
+很多语言不只有一种俗名，例如 `markdown`/`md` `c++`/`cpp` `py`/`python` 输入任意一种只要使代码高亮正确即可。 -->
+
+        <div style="color: #FFF">
+            <!-- Tips. 编辑功能仅为粘贴代码以及做微小改动使用，直接写代码的体验并不好。 -->
+        </div>
+        <!-- 模态框 -->
+        <div class="modal fade" id="submitinfo">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- 模态框头部 -->
+                    <div class="modal-header">
+                        <h4 class="modal-title">请输入具体信息</h4>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- 模态框主体 -->
+                    <div class="modal-body">
+                        <form>
+                            <div class="form-group">
+                                <label for="email">代码语言：</label>
+                                <input type="text" class="form-control" id="postdata_lang"
+                                       placeholder="代码的语言">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">发送者：</label>
+                                <input type="text" class="form-control" id="postdata_user"
+                                       placeholder="常用ID等，标明您的身份，不填写则为annoymous">
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">有效期：<small>使用 d/h/m/s 代指 日/时/分/秒，为空则永久有效</small></label>
+                                <input type="text" class="form-control" id="postdata_exp"
+                                       placeholder='"1d 2h 3m" 表示 26个小时30分钟 后失效，为空为永久有效'>
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">密码：</label>
+                                <input type="text" class="form-control" id="postdata_password"
+                                       placeholder="打开链接的密码，为空则不使用密码保护">
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">文件名：</label>
+                                <input type="text" class="form-control" id="postdata_filename"
+                                       placeholder="文件名（含扩展名）。可以为空">
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">描述：</label>
+                                <input type="text" class="form-control" id="postdata_description"
+                                       placeholder="文件描述，可以为空">
+                            </div>
+                            <button type="buton" class="btn btn-primary" onclick="pasteit()">Paste! </button>
+                        </form>
+
+                    </div>
+                    <!-- 模态框底部 -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- 提交状态 -->
+        <div class="modal fade" id="submitstatus">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- 模态框头部 -->
+                    <div class="modal-header">
+                        <h4 class="modal-title">提交成功</h4>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- 模态框主体 -->
+                    <div class="modal-body">
+                        <form>
+                            <div class="form-group">
+                                <label for="email">地址：</label>
+                                <input type="text" class="form-control" id="ret_url"
+                                       placeholder="文件地址" readonly="true" value="文件地址">
+                            </div>
+                            <div class="form-group">
+                                <label for="pwd">ID： <small>即地址后面部分</small></label>
+                                <input type="text" class="form-control" id="ret_id"
+                                       placeholder='文件ID' readonly="true" value="文件ID">
+                            </div>
+                            <div class="btn-group">
+                                <button type="buton" class="btn btn-success"
+                                        onclick="ret_copyurl()">复制地址</button>&nbsp;&nbsp;
+                                <button type="buton" class="btn btn-primary"
+                                        onclick="window.open($('#ret_url').val(),'_blank')">打开页面</button>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- 模态框底部 -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- 需要密码 -->
+        <div class="modal fade" id="needpwd">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- 模态框头部 -->
+                    <div class="modal-header">
+                        <h4 class="modal-title">此页面需要密码才能查看</h4>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- 模态框主体 -->
+                    <div class="modal-body">
+                        <form action="" method="POST">
+                            <div class="form-group">
+                                <label for="email">密码：</label>
+                                <input type="text" class="form-control" id="ret_url" name="pwd"
+                                       placeholder="密码" value="">
+                            </div>
+                            <div class="form-group">
+                                <input type="submit" class="btn btn-primary" value="确认">
+                            </div>
+                        </form>
+                    </div>
+                    <!-- 模态框底部 -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- 过期 -->
+        <div class="modal fade" id="notfound">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- 模态框头部 -->
+                    <div class="modal-header">
+                        <h4 class="modal-title">此页面未找到或过期</h4>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <!-- 模态框主体 -->
+                    <div class="modal-body">
+                        <form action="" method="POST">
+                            <div class="form-group">
+                                <label>此页面未找到，或者已经过期</label><br>
+                                <label>请核对链接是否正确</label><br>
+                                <label>如果正确，请联系作者重新发送</label>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- 模态框底部 -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal">
+            打开模态框
+        </button> -->
+    </div>
+    <script>
+        function QWQ(e) {
+            if (e.keyCode == 9) {
+                // alert("QWQ");
+                e.preventDefault();
+                var indent = '    ';
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                var selected = window.getSelection().toString();
+                selected = indent + selected.replace(/\n/g, '\n' + indent);
+                this.value = this.value.substring(0, start) + selected
+                    + this.value.substring(end);
+                this.setSelectionRange(start + indent.length, start
+                    + selected.length);
+            }
+        }
+        function htmlencode(text) {
+            return $('<div>').text(text).html()
+        }
+        function htmldecode(h) {
+            $('<div>').html(h).text()
+        }
+        function inputlang_listen(e) {
+            if (e.keyCode == 13) {
+                e.preventDefault();
+                highlight_code();
+            }
+        }
+        function highlight_code() {
+            var e = document.getElementById("codeArea");
+            var text = htmlencode(e.innerText).replace(/\n\n/g, "\n").replace(/\n$/, "");
+            e.innerHTML = text;
+            console.log(text);
+            // alert(document.getElementById("inputlang").value);
+            e.setAttribute("class", $("#inputlang").val());
+            $("#postdata_lang").val($("#inputlang").val());
+            hljs.highlightBlock(e);
+            e.innerHTML = "<ol><li>" + e.innerHTML.replace(/\n/g, "\n</li><li>") + "\n</li></ul>";
+            // }
+        }
+        var e = document.getElementById("codeArea");
+        hljs.highlightBlock(e);
+        e.innerHTML = "<ol><li>" + e.innerHTML.replace(/\n/g, "\n</li><li>") + "\n</li></ul>";
+        function insertTabAtCaret(event) {
+            // From. https://stackoverflow.com/questions/45396531/javascript-using-the-tab-key-in-a-contenteditable-div
+            if (event.keyCode === 9) {
+                event.preventDefault();
+                var range = window.getSelection().getRangeAt(0);
+
+                var tabNode = document.createTextNode("\u00a0\u00a0\u00a0\u00a0");
+                range.insertNode(tabNode);
+
+                range.setStartAfter(tabNode);
+                range.setEndAfter(tabNode);
+
+            }
+        }
+        function pasteit() {
+            event.preventDefault();
+            $('#submitinfo').modal('hide');
+            exp = $("#postdata_exp").val();
+
+            // calc time using regex
+            {
+                try {
+                    t_d = exp.match(/\d+[\s]*d/)[0];
+                    t_d = Number(t_d.match(/\d+/)[0]);
+                }
+                catch (err) {
+                    t_d = 0
+                }
+                try {
+                    t_h = exp.match(/\d+[\s]*h/)[0];
+                    t_h = Number(t_h.match(/\d+/)[0]);
+                }
+                catch (err) {
+                    t_h = 0
+                }
+                try {
+                    t_m = exp.match(/\d+[\s]*m/)[0];
+                    t_m = Number(t_m.match(/\d+/)[0]);
+                }
+                catch (err) {
+                    t_m = 0
+                }
+                try {
+                    t_s = exp.match(/\d+[\s]*s/)[0];
+                    t_s = Number(t_s.match(/\d+/)[0]);
+                }
+                catch (err) {
+                    t_s = 0
+                }
+                console.log(t_d, t_h, t_m, t_s);
+                exp = ((((t_d * 24) + t_h) * 60) + t_m) * 60 + t_s;
+            }
+
+            data = {
+                user: $("#postdata_user").val(),
+                exp: String(exp),
+                pwd: $("#postdata_password").val(),
+                fname: $("#postdata_filename").val(),
+                desc: $("#postdata_description").val(),
+                lang: $("#postdata_lang").val(),
+                code: $("#codeArea")[0].innerText.replace(/\n\n/g, "\n").replace(/\n$/, "")
+            }
+            $.ajax({
+                "url": "/paste",
+                "method": "POST",
+                "data": data,
+                success: function (d, status) {
+                    data = JSON.parse(d)
+                    $("#ret_url").val(data["url"])
+                    $("#ret_id").val(data["id"])
+                }
+            })
+            console.log(data)
+            console.log(JSON.stringify(data))
+            $('#submitstatus').modal('show');
+
+        }
+        function newpaste() {
+            window.location = "/paste";
+        }
+        function ret_copyurl() {
+            event.preventDefault();
+            $('#ret_url')[0].select();
+            document.execCommand('copy');
+            alert('复制成功');
+        }
+        function ret_openurl() {
+            window.location = $('#ret_url')[0].value;
+        }
+        function nav_openurl() {
+            t = $("#nav_inputurl").val();
+            if (t.indexOf("/") == -1) { // 认为没有 / 就是不是URL而是id
+                window.location = "/paste/" + t;
+            } else {
+                window.location = t;
+            }
+        }
+        function nav_openurl_listen() {
+            if (event.keyCode == 13) {
+                event.preventDefault();
+                nav_openurl();
+            }
+        }
+        function show_password() {
+            $('#needpwd').modal('show');
+        }
+        function show_404() {
+            $('#notfound').modal('show');
+        }
+        if ({{ pwd }}) {
+            show_password();
+        }
+        if ({{ notfound }}) {
+            show_404();
+        }
+        document.getElementById("codeArea").addEventListener("keydown", insertTabAtCaret);
+        document.getElementById("inputlang").addEventListener("keydown", inputlang_listen);
+        document.getElementById("nav_inputurl").addEventListener("keydown", nav_openurl_listen);
+        document.getElementById("btn-refresh").addEventListener("click", highlight_code);
+    </script>
+</body>
+
+</html>
